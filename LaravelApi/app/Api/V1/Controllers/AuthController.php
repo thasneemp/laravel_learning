@@ -2,11 +2,14 @@
 
 namespace App\Api\V1\Controllers;
 
-use Illuminate\Http\Request;
-
-use App\Http\Requests;
-use Dingo\Api\Routing\Helpers;
 use App\Http\Controllers\Controller;
+use App\Transformerse\UserTransformerEasyLogin;
+use App\User;
+use Dingo\Api\Routing\Helpers;
+use Illuminate\Http\Request;
+use JWTAuth;
+use JWTFactory;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 /**
  * Class AuthController
@@ -37,7 +40,6 @@ use App\Http\Controllers\Controller;
  *     )
  * )
  */
-
 class AuthController extends Controller
 {
     //
@@ -52,7 +54,7 @@ class AuthController extends Controller
      */
 
     /**
-     *  @SWG\Get(
+     * @SWG\Get(
      *     path="/api/forceupdate",
      *     summary="Check force update",
      *     description="Check force update",
@@ -80,10 +82,34 @@ class AuthController extends Controller
             "ios_version" => "1.1",
             "force_update" => false
         ];
-        return $this->response->json($content = [
-            "android_version" => "1.0.3",
-            "ios_version" => "1.1",
-            "force_update" => false
-        ]);
+        return $this->response->array($content);
     }
+
+
+    public function insertUser(Request $request)
+    {
+        try {
+
+            User::unguard();
+            $user = User::create([
+                'name' => $request->get('name'),
+                'email' => $request->get('email'),
+                'password' => bcrypt($request->get('password'))
+            ]);
+            User::reguard();
+            try {
+                $token = JWTAuth::fromUser($user);
+            } catch (JWTException $e) {
+                return $this->response->error(config('messages.auth.tokenFailed'), 200);
+            }
+            $user->setAttribute('token', $token);
+        } catch (JWTException $exception) {
+            return $this->response->error("could not create token", 500);
+        }
+
+        return $this->response->item($user, new UserTransformerEasyLogin());
+
+    }
+
+
 }
