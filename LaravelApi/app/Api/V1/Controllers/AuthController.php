@@ -112,4 +112,14 @@ class AuthController extends Controller
     }
 
 
+    public function getAuthToken(Request $request)
+    {
+        $token = $request->oldtoken;
+        $new_token = JWTAuth::refresh($token);
+        return [
+            'token' => $new_token
+        ];
+    }
+
+
 }
